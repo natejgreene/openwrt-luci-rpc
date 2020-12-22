@@ -41,3 +41,15 @@ class OpenWrtRpc:
         """Get details of all devices"""
         return self.router.get_all_connected_devices(
             only_reachable=only_reachable, wlan_interfaces=wlan_interfaces)
+
+    def get_all_firewall(self):
+        """Get details of all devices"""
+        return self.router.get_all_firewall()
+
+    def set_firewall(self, name, *args):
+        """Get details of all devices"""
+        return self.router.set_firewall(name, *args)
+
+    def commit_firewall(self):
+        """Get details of all devices"""
+        return self.router.commit_firewall()

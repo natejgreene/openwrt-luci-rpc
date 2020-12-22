@@ -198,6 +198,57 @@ class OpenWrtLuciRPC:
         log.debug(last_results)
         return last_results
 
+    def get_all_firewall(self):
+        log.debug("Checking for firewall")
+
+        last_results = []
+
+        rpc_uci_call = Constants.LUCI_RPC_UCI_PATH.format(
+            self.host_api_url), 'get_all', 'firewall'
+
+        try:
+            firewall_result = self._call_json_rpc(*rpc_uci_call)
+        except InvalidLuciTokenError:
+            log.info("Refreshing login token")
+            self._refresh_token()
+            return self.get_all_firewall()
+
+        for rule in firewall_result:
+            last_results.append(firewall_result[rule])
+
+        return last_results
+
+
+    def set_firewall(self, name, *args):
+        log.debug("Setting firewall")
+
+        rpc_uci_call = Constants.LUCI_RPC_UCI_PATH.format(
+            self.host_api_url), 'set', 'firewall', name, *args
+
+        try:
+            firewall_result = self._call_json_rpc(*rpc_uci_call)
+        except InvalidLuciTokenError:
+            log.info("Refreshing login token")
+            self._refresh_token()
+            return self.set_firewall(name, *args)
+
+        return firewall_result
+
+    def commit_firewall(self):
+        log.debug("Committing firewall")
+
+        rpc_uci_call = Constants.LUCI_RPC_UCI_PATH.format(
+            self.host_api_url), 'commit', 'firewall'
+
+        try:
+            firewall_result = self._call_json_rpc(*rpc_uci_call)
+        except InvalidLuciTokenError:
+            log.info("Refreshing login token")
+            self._refresh_token()
+            return self.commit_firewall()
+
+        return firewall_result
+
     def _call_json_rpc(self, url, method, *args, **kwargs):
         """Perform one JSON RPC operation."""
         data = json.dumps({'method': method, 'params': args})
@@ -218,10 +269,7 @@ class OpenWrtLuciRPC:
             try:
                 content = result['result']
 
-                if content is not None:
-                    return content
-
-                elif result['error'] is not None:
+                if result['error'] is not None:
                     # On 18.06, we want to check for error 'Method not Found'
                     error_message = result['error']['message']
                     error_code = result['error']['code']
@@ -230,12 +278,8 @@ class OpenWrtLuciRPC:
                             "method: '%s' returned an "
                             "error '%s' (code: '%s).",
                             method, error_message, error_code)
-                else:
-                    log.debug("method: '%s' returned : %s" % (method, result))
-                    # Authentication error
-                    raise InvalidLuciLoginError("Failed to authenticate "
-                                                "with Luci RPC, check your "
-                                                "username and password.")
+
+                return content
 
             except KeyError:
                 raise LuciRpcUnknownError("No result in response from luci")
